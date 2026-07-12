@@ -1,0 +1,10 @@
+## Interface: 20506
+## Title: API Refresher
+## Notes: Captures documented and runtime WoW API surfaces for build-to-build comparison.
+## Author: Autyan
+## Version: 0.1.0
+## SavedVariables: apiRefersherDB
+## OptionalDeps: Blizzard_APIDocumentation, Blizzard_APIDocumentationGenerated
+
+Contracts.lua
+apiRefersher.lua

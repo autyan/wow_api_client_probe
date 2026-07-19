@@ -149,6 +149,72 @@ local function evaluateRequirement(requirement)
   return actualType == requirement.expectedType, actualType
 end
 
+local legacyAuraFields = {
+  { index = 2, field = "name" },
+  { index = 3, field = "icon" },
+  { index = 4, field = "applications" },
+  { index = 5, field = "dispelName" },
+  { index = 6, field = "duration" },
+  { index = 7, field = "expirationTime" },
+  { index = 8, field = "sourceUnit" },
+  { index = 9, field = "isStealable" },
+  { index = 10, field = "nameplateShowPersonal" },
+  { index = 11, field = "spellId" },
+  { index = 12, field = "canApplyAura" },
+  { index = 13, field = "isBossAura" },
+}
+
+local function equivalentAuraValue(left, right)
+  if left == right then
+    return true
+  end
+  return (left == nil or left == false) and (right == nil or right == false)
+end
+
+local function probeUnitAuraTuple()
+  local units = { "player", "target", "focus" }
+  local filters = { "HELPFUL", "HARMFUL" }
+
+  for _, unit in ipairs(units) do
+    for _, filter in ipairs(filters) do
+      for index = 1, 40 do
+        local modernOk, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, index, filter)
+        local legacy = { pcall(UnitAura, unit, index, filter) }
+        if not modernOk or not legacy[1] then
+          return false, ("sample=%s/%s/%d;call-error"):format(unit, filter, index)
+        end
+        if type(aura) ~= "table" then
+          if legacy[2] ~= nil then
+            return false, ("sample=%s/%s/%d;modern-missing"):format(unit, filter, index)
+          end
+          break
+        end
+        if legacy[2] == nil then
+          return false, ("sample=%s/%s/%d;legacy-missing"):format(unit, filter, index)
+        end
+
+        local mismatches = {}
+        for _, mapping in ipairs(legacyAuraFields) do
+          if not equivalentAuraValue(legacy[mapping.index], aura[mapping.field]) then
+            mismatches[#mismatches + 1] = mapping.field
+          end
+        end
+        local sample = ("sample=%s/%s/%d;spellId=%s"):format(unit, filter, index, tostring(aura.spellId))
+        if #mismatches > 0 then
+          return false, sample .. ";mismatch=" .. table.concat(mismatches, ",")
+        end
+        return true, sample .. ";matched=12"
+      end
+    end
+  end
+
+  return false, "sample=none;tuple-not-verified"
+end
+
+local contractProbes = {
+  ["unit-aura-tuple"] = probeUnitAuraTuple,
+}
+
 local function evaluateContracts()
   local results = {}
   for _, contract in ipairs(apiRefersherContracts or {}) do
@@ -173,6 +239,20 @@ local function evaluateContracts()
         if not ok then
           passed = false
         end
+      end
+    end
+
+    if contract.probe then
+      local probe = contractProbes[contract.probe]
+      if type(probe) ~= "function" then
+        passed = false
+        details[#details + 1] = "probe=missing"
+      elseif passed then
+        local probeOk, probePassed, probeDetails = pcall(probe)
+        passed = probeOk and probePassed and true or false
+        details[#details + 1] = "probe=" .. (probeOk and tostring(probeDetails) or ("error:" .. tostring(probePassed)))
+      else
+        details[#details + 1] = "probe=skipped"
       end
     end
 

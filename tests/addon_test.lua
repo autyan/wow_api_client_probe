@@ -46,6 +46,33 @@ C_Spell = {
   GetSpellInfo = function() return nil end,
 }
 
+C_UnitAuras = {
+  GetAuraDataByIndex = function(unit, index, filter)
+    if unit == "player" and index == 1 and filter == "HELPFUL" then
+      return {
+        name = "Test Aura",
+        icon = 123,
+        applications = 2,
+        dispelName = "Magic",
+        duration = 30,
+        expirationTime = 45,
+        sourceUnit = "player",
+        isStealable = false,
+        nameplateShowPersonal = false,
+        spellId = 456,
+        canApplyAura = true,
+        isBossAura = false,
+      }
+    end
+  end,
+}
+
+function UnitAura(unit, index, filter)
+  if unit == "player" and index == 1 and filter == "HELPFUL" then
+    return "Test Aura", 123, 2, "Magic", 30, 45, "player", false, false, 456, true, false
+  end
+end
+
 C_AddOns = {
   LoadAddOn = function() return true end,
   IsAddOnLoaded = function() return true, true end,
@@ -98,7 +125,19 @@ local snapshot = assert(apiRefersherDB.snapshots[apiRefersherDB.latest])
 assert(snapshot.documentation.available)
 assert(snapshot.documentation.functions["C_Container.GetContainerNumSlots"] == "(containerIndex:BagIndex)->(numSlots:number)|runtime=function")
 assert(snapshot.contracts["aura-border-color"].passed)
+assert(snapshot.contracts["unit-aura-tuple"].passed)
+assert(snapshot.contracts["unit-aura-tuple"].details:find("matched=12", 1, true))
 assert(snapshot.contracts["target-aura-refresh"].passed)
 assert(snapshot.runtime["C_Container.GetContainerNumSlots"] == "function")
+
+function UnitAura(unit, index, filter)
+  if unit == "player" and index == 1 and filter == "HELPFUL" then
+    return "Test Aura", 999, 2, "Magic", 30, 45, "player", false, false, 456, true, false
+  end
+end
+SlashCmdList.APIREFERSHER("scan")
+snapshot = assert(apiRefersherDB.snapshots[apiRefersherDB.latest])
+assert(not snapshot.contracts["unit-aura-tuple"].passed)
+assert(snapshot.contracts["unit-aura-tuple"].details:find("mismatch=icon", 1, true))
 
 print("addon scan test passed")

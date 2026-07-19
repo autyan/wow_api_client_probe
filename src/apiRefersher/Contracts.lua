@@ -8,6 +8,15 @@ apiRefersherContracts = {
     },
   },
   {
+    id = "unit-aura-tuple",
+    description = "Legacy UnitAura values match the structured aura API for a live sample.",
+    allOf = {
+      { path = "UnitAura", expectedType = "function" },
+      { path = "C_UnitAuras.GetAuraDataByIndex", expectedType = "function" },
+    },
+    probe = "unit-aura-tuple",
+  },
+  {
     id = "target-aura-refresh",
     description = "The target frame exposes an aura refresh entry point.",
     anyOf = {
